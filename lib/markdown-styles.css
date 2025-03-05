@@ -1,0 +1,59 @@
+.markdown-preview {
+  @apply prose dark:prose-invert max-w-none;
+}
+
+.markdown-preview h1 {
+  @apply text-3xl font-bold mb-4;
+}
+
+.markdown-preview h2 {
+  @apply text-2xl font-semibold mt-6 mb-3;
+}
+
+.markdown-preview h3 {
+  @apply text-xl font-semibold mt-5 mb-2;
+}
+
+.markdown-preview p {
+  @apply my-3;
+}
+
+.markdown-preview ul {
+  @apply list-disc pl-6 my-3;
+}
+
+.markdown-preview ol {
+  @apply list-decimal pl-6 my-3;
+}
+
+.markdown-preview code {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm;
+}
+
+.markdown-preview pre {
+  @apply bg-muted p-4 rounded-md overflow-x-auto my-4;
+}
+
+.markdown-preview pre code {
+  @apply bg-transparent p-0;
+}
+
+.markdown-preview blockquote {
+  @apply border-l-4 border-muted pl-4 italic my-4;
+}
+
+.markdown-preview a {
+  @apply text-primary underline;
+}
+
+.markdown-preview table {
+  @apply w-full border-collapse my-4;
+}
+
+.markdown-preview th, .markdown-preview td {
+  @apply border border-border p-2;
+}
+
+.markdown-preview th {
+  @apply bg-muted;
+}
