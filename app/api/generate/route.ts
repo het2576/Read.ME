@@ -54,14 +54,14 @@ ${description}
 
 ## Features
 
-${features ? features.split('\n').map(f => `- ${f}`).join('\n') : `- Feature 1: Amazing functionality
+${features ? features.split('\n').map((f: string) => `- ${f}`).join('\n') : `- Feature 1: Amazing functionality
 - Feature 2: Intuitive user interface
 - Feature 3: High performance
 - Feature 4: Cross-platform compatibility`}
 
 ## Tech Stack
 
-${techStack ? techStack.split('\n').map(t => `- ${t}`).join('\n') : `- React.js
+${techStack ? techStack.split('\n').map((t: string) => `- ${t}`).join('\n') : `- React.js
 - Node.js
 - MongoDB
 - Express
