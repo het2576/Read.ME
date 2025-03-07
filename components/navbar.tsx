@@ -11,7 +11,7 @@ export function Navbar() {
         </div>
         <div className="flex items-center gap-4">
           <a
-            href="https://github.com"
+            href="https://github.com/het2576/Read.ME"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm font-medium hover:underline"
