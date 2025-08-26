@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'README.md Generator',
   description: 'AI-powered README generator for GitHub projects',
+  verification: {
+    google: "bzQo-VVsJyeO0w3l3ZeqDzDdGQP2by80bzeaZhFmHGk",
+  },
 };
 
 export default function RootLayout({
