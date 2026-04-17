@@ -1,0 +1,39 @@
+name: 'RepoDoc Docs Check'
+description: 'Automatically checks if your README is in sync with your code on every PR or push.'
+author: 'RepoDoc'
+
+branding:
+  icon: 'book-open'
+  color: 'blue'
+
+inputs:
+  repo-token:
+    description: 'GitHub token for posting PR comments (use ${{ secrets.GITHUB_TOKEN }})'
+    required: true
+  repodoc-api-key:
+    description: 'Your RepoDoc API key from repodoc.vercel.app/settings'
+    required: true
+  fail-on-drift:
+    description: 'Set to "true" to fail the CI check when drift score is below threshold'
+    required: false
+    default: 'false'
+  drift-threshold:
+    description: 'Drift score (0-100) below which to warn or fail. Default: 70'
+    required: false
+    default: '70'
+  post-comment:
+    description: 'Set to "false" to disable PR comments (warnings still appear in logs)'
+    required: false
+    default: 'true'
+
+outputs:
+  drift-score:
+    description: 'The drift score (0-100). 100 = fully in sync. Below 70 = needs attention.'
+  status:
+    description: 'Drift status: in-sync | minor-drift | moderate-drift | major-drift'
+  summary:
+    description: 'Human-readable summary of what has changed'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

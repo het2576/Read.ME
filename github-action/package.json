@@ -1,0 +1,26 @@
+{
+  "name": "repodoc-docs-check",
+  "version": "1.0.0",
+  "description": "GitHub Action: Checks if your README is in sync with your code",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc && ncc build src/index.ts -o dist --source-map --minify",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@vercel/ncc": "^0.38.1",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.1"
+  },
+  "keywords": ["github-action", "documentation", "readme", "repodoc"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/repodoc/docs-check"
+  }
+}

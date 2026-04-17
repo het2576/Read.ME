@@ -1,123 +1,91 @@
-import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// /app/api/generate/route.ts — POST: Generate README from analysis
+// Authenticated endpoint — fetches analysis, generates README, saves to DB
 
-// Initialize the Gemini API with the provided API key
-const genAI = new GoogleGenerativeAI('AIzaSyBTPDPyWIgIt5RABwrFYn8RAYFZ1uOCD-I');
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { generateReadme } from '@/lib/generator';
+import { isQuotaError } from '@/lib/gemini';
+import {
+  getUserByGithubId,
+  getLatestAnalysis,
+  saveReadme,
+} from '@/db/queries';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { projectName, description, features, installation, techStack, usage, license, contribution, projectType } = await request.json();
-
-    // Create a prompt for Gemini
-    const prompt = `Generate a professional README.md file for a GitHub project with the following details:
-    
-Project Name: ${projectName}
-Project Type: ${projectType || 'web application'}
-Description: ${description}
-Features: ${features || 'Not specified'}
-Tech Stack: ${techStack || 'Not specified'}
-Installation: ${installation || 'Not specified'}
-Usage: ${usage || 'Not specified'}
-License: ${license || 'MIT'}
-Contribution Guidelines: ${contribution || 'Not specified'}
-
-The README should include the following sections:
-1. Title (Project Name)
-2. Description
-3. Features (as bullet points)
-4. Tech Stack (as bullet points)
-5. Installation (with code blocks for commands)
-6. Usage
-7. License
-8. Contributing
-9. Acknowledgments
-
-Please format the README using proper Markdown syntax.`;
-
-    try {
-      // For production use, use the actual Gemini API
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const readmeContent = response.text();
-      
-      return NextResponse.json({ readme: readmeContent });
-    } catch (apiError) {
-      console.error('Error calling Gemini API:', apiError);
-      
-      // Fallback response in case of API error
-      const fallbackReadme = `# ${projectName}
-
-## Description
-
-${description}
-
-## Features
-
-${features ? features.split('\n').map((f: string) => `- ${f}`).join('\n') : `- Feature 1: Amazing functionality
-- Feature 2: Intuitive user interface
-- Feature 3: High performance
-- Feature 4: Cross-platform compatibility`}
-
-## Tech Stack
-
-${techStack ? techStack.split('\n').map((t: string) => `- ${t}`).join('\n') : `- React.js
-- Node.js
-- MongoDB
-- Express
-- TypeScript`}
-
-## Installation
-
-\`\`\`bash
-# Clone the repository
-git clone https://github.com/username/${projectName.toLowerCase().replace(/\s+/g, '-')}.git
-
-# Navigate to the project directory
-cd ${projectName.toLowerCase().replace(/\s+/g, '-')}
-
-# Install dependencies
-npm install
-
-# Start the development server
-npm run dev
-\`\`\`
-
-## Usage
-
-${usage || `1. Configure your environment variables in \`.env\` file
-2. Run the application using \`npm start\`
-3. Access the application at \`http://localhost:3000\`
-
-For API documentation, visit \`/api/docs\` endpoint.`}
-
-## License
-
-This project is licensed under the ${license || 'MIT'} License - see the LICENSE file for details.
-
-## Contributing
-
-${contribution || `Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the project
-2. Create your feature branch (\`git checkout -b feature/AmazingFeature\`)
-3. Commit your changes (\`git commit -m 'Add some AmazingFeature'\`)
-4. Push to the branch (\`git push origin feature/AmazingFeature\`)
-5. Open a Pull Request`}
-
-## Acknowledgments
-
-- Hat tip to anyone whose code was used
-- Inspiration
-- etc.
-`;
-      
-      return NextResponse.json({ readme: fallbackReadme });
+    // 1. Auth check
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const githubId = (session.user as any).githubId as string;
+
+    // 2. Parse request body
+    const { repoId, analysisId } = await request.json();
+
+    if (!repoId) {
+      return NextResponse.json(
+        { error: 'Missing repoId in request body.' },
+        { status: 400 }
+      );
+    }
+
+    // 3. Get user from DB (verify ownership)
+    const dbUser = await getUserByGithubId(githubId);
+    if (!dbUser) {
+      return NextResponse.json(
+        { error: 'User not found. Please sign in again.' },
+        { status: 401 }
+      );
+    }
+
+    // 4. Fetch analysis from DB
+    const analysis = await getLatestAnalysis(repoId);
+    if (!analysis) {
+      return NextResponse.json(
+        { error: 'No analysis found. Please analyze the repo first.' },
+        { status: 404 }
+      );
+    }
+
+    // 5. Generate README (pass file tree for richer context)
+    const fileTree = analysis.file_tree || [];
+    const readmeContent = await generateReadme(analysis.analysis_data, fileTree);
+
+    // 6. Try to save to DB — fail gracefully if DB has issues
+    let savedReadme = null;
+    try {
+      savedReadme = await saveReadme(
+        repoId,
+        analysisId || analysis.id,
+        readmeContent
+      );
+    } catch (dbError) {
+      console.error('Failed to save README to DB:', dbError);
+      // Continue — still return the generated content even if DB save fails
+    }
+
+    // 7. Return result
+    return NextResponse.json({
+      readmeId: savedReadme?.id || null,
+      content: readmeContent,
+      version: savedReadme?.version || 1,
+    });
   } catch (error) {
-    console.error('Error generating README:', error);
+    console.error('Generate API error:', error);
+
+    if (isQuotaError(error)) {
+      return NextResponse.json(
+        { error: 'AI service quota exceeded. Please try again in a few minutes.' },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
-      { error: 'Failed to generate README', details: JSON.stringify(error) },
+      { error: 'README generation failed. Please try again.' },
       { status: 500 }
     );
   }
